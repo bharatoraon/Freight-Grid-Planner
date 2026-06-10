@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-slate-900 antialiased;
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+  }
+  
+  button, input, select, textarea {
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+  }
+}
+
+/* Custom Scrollbar for Sidebar */
+.no-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #000;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+/* Range Slider Custom Styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+/* Track styles */
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  background: #e4e4e7; /* tailwind zinc-200 */
+  border: 1.5px solid #000;
+  box-shadow: 1px 1px 0 #000;
+  border-radius: 0px;
+}
+
+/* Thumb styles */
+input[type="range"]::-webkit-slider-thumb {
+  height: 16px;
+  width: 16px;
+  border: 2px solid #000;
+  background: #10B981; /* Emerald */
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -6px;
+  box-shadow: 1.5px 1.5px 0 #000;
+  border-radius: 0px;
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  background: #059669;
+}
+
+/* Dark mode range slider styles */
+.dark input[type="range"]::-webkit-slider-runnable-track {
+  background: #27272a; /* tailwind zinc-800 */
+  border-color: #ddd;
+  box-shadow: 1px 1px 0 #ddd;
+}
+.dark input[type="range"]::-webkit-slider-thumb {
+  background: #10B981;
+  border-color: #ddd;
+  box-shadow: 1.5px 1.5px 0 #ddd;
+}
+
+/* Override Leaflet Popup Styles for Neobrutalism */
+.leaflet-popup-content-wrapper {
+  background: #F4F4F0 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0px !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+  padding: 0px !important;
+  font-family: 'Space Grotesk', sans-serif !important;
+}
+
+.leaflet-popup-content {
+  margin: 0px !important;
+  line-height: inherit !important;
+}
+
+.leaflet-popup-tip-container {
+  display: none !important; /* Hide popup tip to keep box clean */
+}
+
+.leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  color: #000 !important;
+  font-size: 14px !important;
+}
+.leaflet-popup-close-button:hover {
+  background: transparent !important;
+  color: #ef4444 !important;
+}
