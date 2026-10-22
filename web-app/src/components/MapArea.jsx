@@ -2,13 +2,66 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import { useStore, CORRIDORS, getTemporalLoadProfile } from '../store';
-import { Layers, Activity, Zap, Compass, ShieldAlert, AlertTriangle, Info, MapPin } from 'lucide-react';
+import { Layers, Activity, Zap, Compass, ShieldAlert, AlertTriangle, Info, MapPin, Map as MapIcon, Key } from 'lucide-react';
 
 const HL_EMERALD = "#10B981";
 const HL_YELLOW = "#FBBF24";
 const HL_BLUE = "#3B82F6";
 const HL_PURPLE = "#8B5CF6";
 const HL_RED = "#EF4444";
+
+const BASEMAP_OPTIONS = [
+  {
+    id: "canvas",
+    label: "Canvas",
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
+    light: {
+      base: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      reference: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+    },
+    dark: {
+      base: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      reference: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+    }
+  },
+  {
+    id: "osm",
+    label: "OSM Street",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    light: {
+      base: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    },
+    dark: {
+      base: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    }
+  },
+  {
+    id: "satellite",
+    label: "Satellite",
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    maxZoom: 18,
+    light: {
+      base: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    },
+    dark: {
+      base: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    }
+  },
+  {
+    id: "carto",
+    label: "CARTO (Key)",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 20,
+    light: {
+      base: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+    },
+    dark: {
+      base: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    }
+  }
+];
 
 const MAP_LAYERS = [
   { id: "hubs", label: "Charging Hubs", color: HL_EMERALD, defaultOn: true },
@@ -128,10 +181,30 @@ export default function MapArea({ theme }) {
     </div>
   );
 
-  // Clean desaturated professional base maps
-  const tileUrl = theme 
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+  const [basemapId, setBasemapId] = useState(() => localStorage.getItem("basemap_type") || "canvas");
+  const [cartoApiKey, setCartoApiKey] = useState(() => import.meta.env.VITE_CARTO_API_KEY || localStorage.getItem("carto_api_key") || "");
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  const handleBasemapChange = (id) => {
+    setBasemapId(id);
+    localStorage.setItem("basemap_type", id);
+    if (id === "carto" && !cartoApiKey) {
+      setShowKeyInput(true);
+    }
+  };
+
+  const saveCartoKey = (key) => {
+    const trimmed = key.trim();
+    setCartoApiKey(trimmed);
+    localStorage.setItem("carto_api_key", trimmed);
+  };
+
+  const currentBasemap = BASEMAP_OPTIONS.find(b => b.id === basemapId) || BASEMAP_OPTIONS[0];
+  const basemapStyle = theme ? currentBasemap.dark : currentBasemap.light;
+  let primaryTileUrl = basemapStyle.base;
+  if (basemapId === "carto" && cartoApiKey) {
+    primaryTileUrl = `${primaryTileUrl}?key=${encodeURIComponent(cartoApiKey)}`;
+  }
 
   const selected = store.selectedHub;
   const scoredSelected = selected ? scoredHubs.find(h => h.id === selected.id) : null;
@@ -139,8 +212,70 @@ export default function MapArea({ theme }) {
   return (
     <div className="w-full h-full relative z-0">
       
-      {/* Sidebar Controls Stack (Layers & Legend) */}
-      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-3 w-[190px]">
+      {/* Sidebar Controls Stack (Basemap, Layers & Legend) */}
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-3 w-[200px]">
+        {/* Basemap Selection Panel */}
+        <div className="flex flex-col gap-1.5 p-3" style={{ background: "#F4F4F0", border: "2.5px solid #000", boxShadow: "3px 3px 0 #000", fontFamily: "'Space Grotesk', sans-serif" }}>
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="text-[9px] font-black uppercase tracking-widest text-black flex items-center gap-1.5">
+              <MapIcon size={11} />
+              Basemap
+            </div>
+            {basemapId === "carto" && (
+              <button 
+                type="button" 
+                onClick={() => setShowKeyInput(!showKeyInput)}
+                title="Configure CARTO API Key"
+                className="text-[8px] font-black uppercase px-1 py-0.5 border border-black bg-white hover:bg-yellow-200 transition-colors"
+              >
+                Key
+              </button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-1.5">
+            {BASEMAP_OPTIONS.map(bm => {
+              const isActive = basemapId === bm.id;
+              return (
+                <button
+                  key={bm.id}
+                  type="button"
+                  onClick={() => handleBasemapChange(bm.id)}
+                  className="px-2 py-1 text-[8.5px] font-black uppercase tracking-wide transition-all text-center"
+                  style={{
+                    background: isActive ? "#000" : "#fff",
+                    color: isActive ? "#fff" : "#000",
+                    border: "1.5px solid #000",
+                    boxShadow: isActive ? "1.5px 1.5px 0 #3B82F6" : "1px 1px 0 #000"
+                  }}
+                >
+                  {bm.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Optional CARTO Key Config Drawer */}
+          {showKeyInput && (
+            <div className="mt-2 pt-2 border-t border-black/30 flex flex-col gap-1">
+              <label className="text-[8px] font-black uppercase tracking-wider text-black flex items-center gap-1">
+                <Key size={9} />
+                CARTO API Key:
+              </label>
+              <input
+                type="password"
+                placeholder="Paste CARTO Key"
+                value={cartoApiKey}
+                onChange={(e) => saveCartoKey(e.target.value)}
+                className="w-full text-[9px] px-1.5 py-1 font-mono border border-black bg-white focus:outline-none focus:ring-1 focus:ring-black"
+              />
+              <div className="text-[7.5px] text-zinc-600 leading-tight">
+                Free key at <a href="https://carto.com/basemaps/apikey" target="_blank" rel="noreferrer" className="underline font-bold">carto.com</a>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Layers Control Panel */}
         <div className="flex flex-col gap-1.5 p-3" style={{ background: "#F4F4F0", border: "2.5px solid #000", boxShadow: "3px 3px 0 #000", fontFamily: "'Space Grotesk', sans-serif" }}>
           <div className="text-[9px] font-black uppercase tracking-widest text-black mb-1 flex items-center gap-1.5">
@@ -208,10 +343,22 @@ export default function MapArea({ theme }) {
         zoomControl={false} 
         className="w-full h-full"
       >
+        {/* Base Tile Layer */}
         <TileLayer 
-          url={tileUrl}
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          key={`${basemapId}-${theme ? 'dark' : 'light'}-base-${cartoApiKey}`}
+          url={primaryTileUrl}
+          attribution={currentBasemap.attribution}
+          maxZoom={currentBasemap.maxZoom || 19}
         />
+        {/* Reference / Labels Overlay Layer (if defined, e.g. for Esri Canvas) */}
+        {basemapStyle.reference && (
+          <TileLayer 
+            key={`${basemapId}-${theme ? 'dark' : 'light'}-ref`}
+            url={basemapStyle.reference}
+            attribution=""
+            maxZoom={currentBasemap.maxZoom || 16}
+          />
+        )}
         <MapController />
 
         {/* Display India States Boundary Outline */}
